@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Assignment 5: IndexDB and Canvas</title>
+<style type="text/css">
+html, body {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+header {
+	padding: 20px;
+	text-align: center;
+	background: #1abc9c;
+	color: white;
+}
+
+.button {
+	background-color: #1abc9c;
+	border: none;
+	color: white;
+	padding: 15px 32px;
+	text-align: center;
+	text-decoration: none;
+	display: inline-block;
+	font-size: 16px;
+}
+</style>
+<script type="text/javascript">
+	var initialAnswers = [ "Maybe", "Could be", "Definitely not",
+			"If the weather is good", "Depends on the phase of the moon",
+			"Why do you ask?", "Go ask someone	else",
+			"I couldn't possibly fail to disagree less" ];
+	var answers = initialAnswers;
+	var request = indexedDB.open("questionsdb");
+
+	request.onupgradeneeded = function() {
+		var db = request.result;
+		var store = db.createObjectStore("questions", {
+			keyPath : "question"
+		});
+		var titleIndex = store.createIndex("by_question", "question", {
+			unique : true
+		});
+	};
+
+	request.onsuccess = function() {
+		db = request.result;
+	};
+	//Submit the question
+	function submitQuestion() {
+		var i = Math.floor(Math.random() * answers.length);
+		var question = document.getElementById("question").value;
+		if (question != "") {
+			var tx = db.transaction("questions", "readwrite");
+			var store = tx.objectStore("questions");
+			var index = store.index("by_question");
+
+			var request = index.get(question);
+			request.onsuccess = function() {
+				var matching = request.result;
+				if (matching !== undefined) {
+					console.log("Question is alredy answered. Anwser is:"
+							+ matching['answer'])
+					document.getElementById("questionAnswer").innerHTML = "Question is already answered. Anwser is:"
+							+ matching['answer'];
+				} else {
+					ans = document.getElementById("answer").value;
+					if (ans == "")
+						ans = answers[i]
+					answers.push(ans)
+					store.put({
+						question : question,
+						answer : ans
+					});
+				}
+				document.getElementById("answer").value = ""
+				document.getElementById("question").value = ""
+			};
+
+		}
+	}
+	//Reset the data
+	function reset() {
+		var tx = db.transaction("questions", "readwrite");
+		var store = tx.objectStore("questions");
+		store.clear();
+		answers = initialAnswers;
+		document.getElementById("questionAnswer").innerHTML = "";
+		document.getElementById("answer").value = ""
+		document.getElementById("question").value = ""
+	}
+</script>
+</head>
+<body>
+	<header>
+		<h1>Assignment 5: IndexDB and Canvas</h1>
+	</header>
+	<br />
+	<section id="changingSection"></section>
+	<br />
+	<label><b>Enter question in below section:</b></label>
+	<br />
+	<textarea name="question" id="question" style="resize: none;" rows="10"
+		cols="100" maxlength="1000">
+	</textarea>
+	<br />
+	<label><b>Possible Answer:</b></label>
+	<br />
+	<textarea name="answer" id="answer" style="resize: none;" rows="10"
+		cols="100" maxlength="1000">
+	</textarea>
+	<br />
+
+	<input type="button" class="button" onclick="submitQuestion()"
+		value="Submit">
+	<input type="button" class="button" onclick="reset()" value="Reset">
+	<br />
+	<div id="questionAnswer"></div>
+</body>
+</html>
